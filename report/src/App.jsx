@@ -39,7 +39,6 @@ const testResults = {
       "Tag": [
         "Maester",
         "Intune",
-        "All",
         "MT.1053"
       ],
       "Result": "Failed",
@@ -120,7 +119,6 @@ const testResults = {
       "Tag": [
         "Maester",
         "Intune",
-        "All",
         "MT.1054"
       ],
       "Result": "Failed",
@@ -203,8 +201,7 @@ const testResults = {
       "TotalCount": 2,
       "Tag": [
         "Maester",
-        "Intune",
-        "All"
+        "Intune"
       ]
     }
   ]
