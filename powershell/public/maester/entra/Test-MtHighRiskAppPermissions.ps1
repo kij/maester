@@ -393,14 +393,33 @@ function Test-MtHighRiskAppPermissions {
         $allApiAssignments = [System.Collections.Generic.List[PSCustomObject]]::new()
 
         $allServicePrincipals = Invoke-MtGraphRequest -RelativeUri 'servicePrincipals'
+        $spIdToSp = @{}
         foreach ($sp in $allServicePrincipals) {
-            if (([string]::IsNullOrEmpty($sp.Id))) {
-                continue
+            if (![string]::IsNullOrEmpty($sp.Id)) {
+                $spIdToSp[$sp.Id] = $sp
             }
-            $spUrl = "https://entra.microsoft.com/#view/Microsoft_AAD_IAM/ManagedAppMenuBlade/~/Overview/objectId/$($sp.id)/appId/$($sp.appId)"
+        }
+        $spIds = $spIdToSp.Keys
 
-            $spAppRoleAssignments = Invoke-MgGraphRequest -Uri "https://graph.microsoft.com/v1.0/servicePrincipals/$($sp.Id)/appRoleAssignments" -Method GET
-            $spAppRoleAssignments.value | ForEach-Object {
+        # Prepare batch URIs
+        $appRoleUris = $spIds | ForEach-Object { "servicePrincipals/$_/appRoleAssignments" }
+        $oauth2GrantUris = $spIds | ForEach-Object { "servicePrincipals/$_/oauth2PermissionGrants" }
+
+        # Batch fetch
+        $appRoleAssignmentsResults = Invoke-MtGraphRequest -RelativeUri $appRoleUris -DisableBatching:$false
+        $oauth2PermissionGrantsResults = Invoke-MtGraphRequest -RelativeUri $oauth2GrantUris -DisableBatching:$false
+
+        $allApiAssignments = [System.Collections.Generic.List[PSCustomObject]]::new()
+
+        # Filter out any results with null Ids
+        $appRoleAssignmentsResults=  $appRoleAssignmentsResults | Where-Object Id -ne $null
+        $oauth2PermissionGrantsResults = $oauth2PermissionGrantsResults | Where-Object Id -ne $null
+
+        foreach ($result in $appRoleAssignmentsResults) {
+            $spId = $result.principalId
+            if ($spId -and $spIdToSp.ContainsKey($spId)) {
+                $sp = $spIdToSp[$spId]
+                $spUrl = "https://entra.microsoft.com/#view/Microsoft_AAD_IAM/ManagedAppMenuBlade/~/Overview/objectId/$($sp.Id)/appId/$($sp.appId)"
                 $allApiAssignments.Add([PSCustomObject]@{
                         appDisplayName = $sp.appDisplayName
                         objectId       = $sp.Id
@@ -411,10 +430,14 @@ function Test-MtHighRiskAppPermissions {
                         type           = 'Application'
                     })
             }
+        }
 
-            $spOauth2PermissionGrants = Invoke-MgGraphRequest -Uri "https://graph.microsoft.com/v1.0/servicePrincipals/$($sp.Id)/oauth2PermissionGrants" -Method GET
-            $spOauth2PermissionGrants.value | ForEach-Object {
-                $_.scope.Split(' ') | ForEach-Object {
+        foreach ($result in $oauth2PermissionGrantsResults) {
+            $spId = $result.clientId
+            if ($spId -and $spIdToSp.ContainsKey($spId)) {
+                $sp = $spIdToSp[$spId]
+                $spUrl = "https://entra.microsoft.com/#view/Microsoft_AAD_IAM/ManagedAppMenuBlade/~/Overview/objectId/$($sp.Id)/appId/$($sp.appId)"
+                $result.scope.Split(' ') | ForEach-Object {
                     $allApiAssignments.Add([PSCustomObject]@{
                             appDisplayName = $sp.appDisplayName
                             objectId       = $sp.Id
