@@ -486,10 +486,12 @@ function Invoke-Maester {
 
         if ($Verbosity -eq 'None') {
             # Show final summary.
-            Write-Host "`nTests Passed ✅: $($pesterResults.PassedCount), " -NoNewline -ForegroundColor Green
-            Write-Host "Failed ❌: $($pesterResults.FailedCount), " -NoNewline -ForegroundColor Red
-            Write-Host "Skipped ⚫: $($pesterResults.SkippedCount) " -NoNewline -ForegroundColor DarkGray
-            Write-Host "Not Run ⚫: $($pesterResults.NotRunCount)`n" -ForegroundColor DarkGray
+            Write-Host "`nTests Passed ✅: $($maesterResults.PassedCount), " -NoNewline -ForegroundColor Green
+            Write-Host "Failed ❌: $($maesterResults.FailedCount), " -NoNewline -ForegroundColor Red
+            Write-Host "Skipped ⚫: $($maesterResults.SkippedCount), " -NoNewline -ForegroundColor DarkGray
+            Write-Host "Error ⚠️: $($maesterResults.ErrorCount), " -NoNewline -ForegroundColor DarkGray
+            Write-Host "Not Run ⚫: $($maesterResults.NotRunCount), " -NoNewline -ForegroundColor DarkGray
+            Write-Host "Total 🟰: $($maesterResults.TotalCount)`n" 
         }
 
         if (-not $SkipVersionCheck -and 'Next' -ne $version) {
