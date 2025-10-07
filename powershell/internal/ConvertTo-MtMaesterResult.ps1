@@ -85,7 +85,7 @@ function ConvertTo-MtMaesterResult {
         $reason = if ($err.CategoryInfo.Reason) { $err.CategoryInfo.Reason } else { "UnknownError" }
         $scriptName = if ($err.InvocationInfo.ScriptName) { $err.InvocationInfo.ScriptName } else { 'Unknown' }
         $lineNumber = if ($err.InvocationInfo.ScriptLineNumber) { $err.InvocationInfo.ScriptLineNumber } else { '?' }
-        $location = "$scriptName:$lineNumber"
+        $location = $scriptName + ':' + $lineNumber
         $code = if ($err.InvocationInfo.Line) { $err.InvocationInfo.Line.Trim() } else { "No code available" }
         # This adds spaces after commas. Allowing text to reflow around long lines.
         $message = ($err.ToString() -split '\s*,\s*' | ForEach-Object { $_.Trim() }) -join ", "
