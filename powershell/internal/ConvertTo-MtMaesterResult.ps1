@@ -73,6 +73,23 @@ function ConvertTo-MtMaesterResult {
         return 'Unknown'
     }
 
+    function GetTestErrorDetails($test) {
+        # Extracts and formats error details from a failed Pester test
+        if (-not $test -or -not $test.ErrorRecord -or $test.ErrorRecord.Count -eq 0) {
+            Write-Warning "GetTestErrorDetails: Error information not available - test=$($test?.ExpandedName ?? 'Unknown')"
+            return "Error information not available"
+        }
+
+        $err = $test.ErrorRecord[0]
+        $reason = $err.CategoryInfo.Reason ?? "UnknownError"
+        $location = "$($err.InvocationInfo.ScriptName ?? 'Unknown'):$($err.InvocationInfo.ScriptLineNumber ?? '?')"
+        $code = $err.InvocationInfo.Line?.Trim() ?? "No code available"
+        # This adds spaces after commas. Allowing text to reflow around long lines.
+        $message = ($err.ToString() -split '\s*,\s*' | ForEach-Object { $_.Trim() }) -join ", "
+        Write-Error "UNHANDLED TEST ERROR in '$($test.Name)': $reason at $location`n$code`n$message"
+        return "Error. An **$reason** occurred while running the test. ⚠️`n```````n$location`n$code`n`n$message`n``````"
+    }
+
     #if(Test-MtConnection Graph) { #ToValidate: Issue with -SkipGraphConnect
     #    $mgContext = Get-MgContext
     #}
@@ -142,11 +159,28 @@ function ConvertTo-MtMaesterResult {
                 $test.ErrorRecord.Count -gt 0 -and
                 $test.ErrorRecord[0].CategoryInfo -and
                 $test.ErrorRecord[0].CategoryInfo.Reason) -and
-                (@("RuntimeException","ParameterBindingValidationException","ParameterBindingException","HttpRequestException","TaskCanceledException") -Contains $test.ErrorRecord[0].CategoryInfo.Reason )) {
+            (@("RuntimeException", "ParameterBindingValidationException", "ParameterBindingException", "HttpRequestException", "TaskCanceledException") -Contains $test.ErrorRecord[0].CategoryInfo.Reason )) {
             Write-Verbose "Setting result=Error $($name) because: $($test.ErrorRecord[0].CategoryInfo.Reason)"
             $result = "Error"
-        }
-        else {
+
+            # We should also set the TestResult in ResultDetail for unhandled exceptions
+            if (!$testResultDetail) {
+                $errorTestResult = GetTestErrorDetails $test
+
+                $testResultDetail = [PSCustomObject]@{
+                    TestTitle       = $testTitle
+                    TestDescription = 'Error running Pester test.'
+                    TestResult      = $errorTestResult
+                    TestSkipped     = 'TestSkipped missing'
+                    SkippedReason   = 'SkippedReason missing'
+                    Severity        = $severity
+                    Service         = ''
+                }
+            } else {
+                Write-Error "ERROR!! Setting TestResultDetail.TestResult=Error for $($name) because: $($test.ErrorRecord[0].CategoryInfo.Reason) But we are in error case, with TestDetails. This should not happen. Please report this issue."
+            }
+
+        } else {
             $result = $test.Result
         }
 
@@ -205,8 +239,7 @@ function ConvertTo-MtMaesterResult {
                     Tag          = $block.Tag
                 }
                 $mtBlocks += $mtBlockInfo
-            }
-            else {
+            } else {
                 # We already seen and counted all blocks
             }
         }
