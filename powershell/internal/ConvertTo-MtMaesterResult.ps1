@@ -76,14 +76,17 @@ function ConvertTo-MtMaesterResult {
     function GetTestErrorDetails($test) {
         # Extracts and formats error details from a failed Pester test
         if (-not $test -or -not $test.ErrorRecord -or $test.ErrorRecord.Count -eq 0) {
-            Write-Warning "GetTestErrorDetails: Error information not available - test=$($test?.ExpandedName ?? 'Unknown')"
+            $testName = if ($test -and $test.ExpandedName) { $test.ExpandedName } else { 'Unknown' }
+            Write-Warning "GetTestErrorDetails: Error information not available - test=$testName"
             return "Error information not available"
         }
 
         $err = $test.ErrorRecord[0]
-        $reason = $err.CategoryInfo.Reason ?? "UnknownError"
-        $location = "$($err.InvocationInfo.ScriptName ?? 'Unknown'):$($err.InvocationInfo.ScriptLineNumber ?? '?')"
-        $code = $err.InvocationInfo.Line?.Trim() ?? "No code available"
+        $reason = if ($err.CategoryInfo.Reason) { $err.CategoryInfo.Reason } else { "UnknownError" }
+        $scriptName = if ($err.InvocationInfo.ScriptName) { $err.InvocationInfo.ScriptName } else { 'Unknown' }
+        $lineNumber = if ($err.InvocationInfo.ScriptLineNumber) { $err.InvocationInfo.ScriptLineNumber } else { '?' }
+        $location = "$scriptName:$lineNumber"
+        $code = if ($err.InvocationInfo.Line) { $err.InvocationInfo.Line.Trim() } else { "No code available" }
         # This adds spaces after commas. Allowing text to reflow around long lines.
         $message = ($err.ToString() -split '\s*,\s*' | ForEach-Object { $_.Trim() }) -join ", "
         Write-Error "UNHANDLED TEST ERROR in '$($test.Name)': $reason at $location`n$code`n$message"
