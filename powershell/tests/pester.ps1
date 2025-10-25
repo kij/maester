@@ -34,6 +34,8 @@ $testresults = [System.Collections.Generic.List[object]]::new()
 $scriptAnalyzerFailures = [System.Collections.Generic.List[object]]::new()
 $config = New-PesterConfiguration
 $config.TestResult.Enabled = $true
+$config.Should.ErrorAction = 'Stop'
+$config.Run.Exit = $true
 
 function Test-ContainsFailureRule {
     [CmdletBinding()]
